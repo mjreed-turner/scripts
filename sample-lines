@@ -1,0 +1,48 @@
+#!/usr/bin/env perl
+use v5.14;
+
+# select a random sample of lines from a file
+my $n = 1;
+if ($ARGV[0] =~ /^-n(.*)/) {
+  $n = $1;
+  shift @ARGV;
+  if (!$n) {
+    $n = $ARGV[0];
+    shift @ARGV;
+  }
+}
+
+my @sample;
+while (<>) {
+  if (@sample < $n) {
+    push @sample, $_;
+  } else {
+    my $j = int(rand $.);
+    $sample[$j] = $_ if $j < $n;
+  }
+}
+print @sample;
+
+__END__
+=head1 NAME
+
+    sample-lines - Retrieve a random subset of input lines 
+
+=head1 SYNOPSIS
+
+    sample-lines [-n count] [file...]
+
+=head1 OPTIONS
+
+    -n	count   Specify the number of lines to return (default is 1 line)
+
+=head1 DESCRIPTION
+
+   Given any stream of lines of text, sample-lines will return a randomly-selected
+   subset of any size.  If the requested size is more than the number of lines actually
+   supplied, all input lines are returned; otherwise, each input line has an equal 
+   probability of being included in the output sample.
+
+=head1 AUTHOR
+
+   Written by Mark J. Reed <mark.reed@turner.com>
