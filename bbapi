@@ -2,18 +2,34 @@
 # Command-line tool for grabbing data from the Bitbucket API
 # set BB_TEAM to the team name; set BB_API_AUTH_TOKEN to auth
 # credentials (e.g. username:password)
-: "${BB_TEAM:=vgtf}"
-[[ -n $BB_API_AUTH_TOKEN ]] || {
-  echo >&2 "$0: need to set \$BB_API_AUTH_TOKEN"
-  exit 1
-}
+main() {
+  if (( ! $# )); then
+    echo >&2 "Usage: $0 subcommand [arguments]"
+    exit 1
+  fi
 
-for need in curl jq; do 
-  type -P "$need" >/dev/null || {
-    echo >&2 "$0: $need not found."
+  : "${BB_TEAM:=vgtf}"
+  [[ -n $BB_API_AUTH_TOKEN ]] || {
+    echo >&2 "$0: need to set \$BB_API_AUTH_TOKEN"
     exit 1
   }
-done
+
+  for need in curl jq; do 
+    type -P "$need" >/dev/null || {
+      echo >&2 "$0: $need not found."
+      exit 1
+    }
+  done
+
+  local cmd=$1 func=bbapi_$1
+  shift
+  if [[ $(type -t "$func") == function  ]]; then
+    "$func" "$@"
+  else
+    echo >&2 "$0: Unknown subcommand '$cmd'"
+    exit 1
+  fi
+}
 
 # use paging api to retrieve all values from an API endpoint
 _bbcat() {
@@ -28,43 +44,38 @@ _bbcat() {
   done
 }
 
+# list all repositories
 bbapi_lsrepos() { 
   _bbcat https://bitbucket.org/api/2.0/repositories/"${1:-$BB_TEAM}" | jq -r .name | sort
 }
 
 
+# list all groups associated with a team
 bbapi_lsgroups() {
    _bbcat https://bitbucket.org/api/1.0/groups/"${1:-$BB_TEAM}" | jq -r '.[]|.name' | sort 
 }
 
 
+# list all members of a specific group
 bbapi_lsgroup() {
   curl -sSu "$BB_API_AUTH_TOKEN" https://bitbucket.org/api/1.0/groups/$BB_TEAM/"$1" | jq -r '.members[]|.username'
 }
 
+# list pull requests
 bbapi_lsprs() {
   curl -sSu "$BB_API_AUTH_TOKEN" https://api.bitbucket.org/1.0/user/pullrequests/dashboard
 }
 
+# list all members of a team
 bbapi_lsteam() {
   _bbcat https://bitbucket.org/api/2.0/teams/"${1:-$BB_TEAM}"/members  | jq -r .username | sort
 }
 
+# list subcommands
 bbapi_help() {
    printf 'Usage: %s subcommand [arguments]\n' "$0"
    printf '  Available subcommands:\n'
    declare -F | sed -ne $'s/^declare -f bbapi_/    /p'
 }
 
-if (( ! $# )); then
-  echo >&2 "Usage: $0 subcommand [arguments]"
-  exit 1
-fi
-func=bbapi_$1
-shift
-if [[ $(type -t "$func") == function  ]]; then
-  "$func" "$@"
-else
-  echo >&2 "$0: Unknown subcommand '$func'"
-  exit 1
-fi
+main "$@"
