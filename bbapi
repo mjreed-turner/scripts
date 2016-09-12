@@ -16,7 +16,7 @@ for need in curl jq; do
 done
 
 # use paging api to retrieve all values from an API endpoint
-bbcat() {
+_bbcat() {
   local data='{ "next": "'"$1"'" }' q
   while next=$(jq -r -e .next <<<"$data"); do 
     data=$(curl -sSu "$BB_API_AUTH_TOKEN" "$next")
@@ -28,35 +28,43 @@ bbcat() {
   done
 }
 
-lsrepos() { 
-  bbcat https://bitbucket.org/api/2.0/repositories/"${1:-$BB_TEAM}" | jq -r .name | sort
+bbapi_lsrepos() { 
+  _bbcat https://bitbucket.org/api/2.0/repositories/"${1:-$BB_TEAM}" | jq -r .name | sort
 }
 
 
-lsgroups() {
-   bbcat https://bitbucket.org/api/1.0/groups/"${1:-$BB_TEAM}" | jq -r '.[]|.name' | sort 
+bbapi_lsgroups() {
+   _bbcat https://bitbucket.org/api/1.0/groups/"${1:-$BB_TEAM}" | jq -r '.[]|.name' | sort 
 }
 
 
-lsgroup() {
+bbapi_lsgroup() {
   curl -sSu "$BB_API_AUTH_TOKEN" https://bitbucket.org/api/1.0/groups/$BB_TEAM/"$1" | jq -r '.members[]|.username'
 }
 
-lsprs() {
+bbapi_lsprs() {
   curl -sSu "$BB_API_AUTH_TOKEN" https://api.bitbucket.org/1.0/user/pullrequests/dashboard
 }
 
-lsteam() {
-  bbcat https://bitbucket.org/api/2.0/teams/"${1:-$BB_TEAM}"/members  | jq -r .username | sort
+bbapi_lsteam() {
+  _bbcat https://bitbucket.org/api/2.0/teams/"${1:-$BB_TEAM}"/members  | jq -r .username | sort
+}
+
+bbapi_help() {
+   printf 'Usage: %s subcommand [arguments]\n' "$0"
+   printf '  Available subcommands:\n'
+   declare -F | sed -ne $'s/^declare -f bbapi_/    /p'
 }
 
 if (( ! $# )); then
   echo >&2 "Usage: $0 subcommand [arguments]"
   exit 1
 fi
-func="$1"
+func=bbapi_$1
 shift
-case "$func" in
-  lsteam|lsrepos|lsgroup*|lsprs) "$func" "$@";;
-  *) echo >&2 "$0: Unknown subcommand '$func'"; exit 1;;
-esac
+if [[ $(type -t "$func") == function  ]]; then
+  "$func" "$@"
+else
+  echo >&2 "$0: Unknown subcommand '$func'"
+  exit 1
+fi
