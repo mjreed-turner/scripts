@@ -27,17 +27,17 @@ bbcat() {
 }
 
 lsrepos() { 
-  bbcat https://bitbucket.org/api/2.0/repositories/"${1:-vgtf}" | jq -r .name | sort
+  bbcat https://bitbucket.org/api/2.0/repositories/"${1:-$BB_TEAM}" | jq -r .name | sort
 }
 
 
 lsgroups() {
-   bbcat https://bitbucket.org/api/1.0/groups/"${1:-vgtf}" | jq -r '.[]|.name' | sort 
+   bbcat https://bitbucket.org/api/1.0/groups/"${1:-$BB_TEAM}" | jq -r '.[]|.name' | sort 
 }
 
 
 lsgroup() {
-  curl -sSu "$BB_API_AUTH_TOKEN" https://bitbucket.org/api/1.0/groups/vgtf/"$1" | jq -r '.members[]|.username'
+  curl -sSu "$BB_API_AUTH_TOKEN" https://bitbucket.org/api/1.0/groups/$BB_TEAM/"$1" | jq -r '.members[]|.username'
 }
 
 lsprs() {
@@ -45,7 +45,7 @@ lsprs() {
 }
 
 lsteam() {
-  bbcat https://bitbucket.org/api/2.0/teams/"${1:-vgtf}"/members  | jq -r .username | sort
+  bbcat https://bitbucket.org/api/2.0/teams/"${1:-$BB_TEAM}"/members  | jq -r .username | sort
 }
 
 func="$1"
