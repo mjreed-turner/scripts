@@ -1,5 +1,7 @@
 #!/bin/bash
 # Command-line tool for grabbing data from the Bitbucket API
+# set BB_TEAM to the team name; set BB_API_AUTH_TOKEN to auth
+# credentials (e.g. username:password)
 : "${BB_TEAM:=vgtf}"
 [[ -n $BB_API_AUTH_TOKEN ]] || {
   echo >&2 "$0: need to set \$BB_API_AUTH_TOKEN"
@@ -48,6 +50,10 @@ lsteam() {
   bbcat https://bitbucket.org/api/2.0/teams/"${1:-$BB_TEAM}"/members  | jq -r .username | sort
 }
 
+if (( ! $# )); then
+  echo >&2 "Usage: $0 subcommand [arguments]"
+  exit 1
+fi
 func="$1"
 shift
 case "$func" in
