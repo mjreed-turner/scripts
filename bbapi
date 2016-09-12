@@ -1,0 +1,56 @@
+#!/bin/bash
+# Command-line tool for grabbing data from the Bitbucket API
+: "${BB_TEAM:=vgtf}"
+[[ -n $BB_API_AUTH_TOKEN ]] || {
+  echo >&2 "$0: need to set \$BB_API_AUTH_TOKEN"
+  exit 1
+}
+
+for need in curl jq; do 
+  type -P "$need" >/dev/null || {
+    echo >&2 "$0: $need not found."
+    exit 1
+  }
+done
+
+# use paging api to retrieve all values from an API endpoint
+bbcat() {
+  local data='{ "next": "'"$1"'" }' q
+  while next=$(jq -r -e .next <<<"$data"); do 
+    data=$(curl -sSu "$BB_API_AUTH_TOKEN" "$next")
+    case "$data" in 
+    '['*) q=. ;;
+    '{'*) q='.values[]'
+    esac
+    jq -r "$q" <<<"$data"
+  done
+}
+
+lsrepos() { 
+  bbcat https://bitbucket.org/api/2.0/repositories/"${1:-vgtf}" | jq -r .name | sort
+}
+
+
+lsgroups() {
+   bbcat https://bitbucket.org/api/1.0/groups/"${1:-vgtf}" | jq -r '.[]|.name' | sort 
+}
+
+
+lsgroup() {
+  curl -sSu "$BB_API_AUTH_TOKEN" https://bitbucket.org/api/1.0/groups/vgtf/"$1" | jq -r '.members[]|.username'
+}
+
+lsprs() {
+  curl -sSu "$BB_API_AUTH_TOKEN" https://api.bitbucket.org/1.0/user/pullrequests/dashboard
+}
+
+lsteam() {
+  bbcat https://bitbucket.org/api/2.0/teams/"${1:-vgtf}"/members  | jq -r .username | sort
+}
+
+func="$1"
+shift
+case "$func" in
+  lsteam|lsrepos|lsgroup*|lsprs) "$func" "$@";;
+  *) echo >&2 "$0: Unknown subcommand '$func'"; exit 1;;
+esac
